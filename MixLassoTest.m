@@ -8,34 +8,35 @@
 %%      \frac{-1}{2*tau} tr( diag(a)XX'diag(a) M ) + <y,a> - \frac{1}{2}\|a\|^2 + Lambda*\|M\|_S
 %%
 
-function [Z,W,c] = MixLasso( y, X, Lambda, Tau, Gamma, Z0, W0 )
+function [Z,W,c] = MixLassoTest( y, X, Lambda, Tau, Gamma, Z0, W0, Z_init )
 
-TOL = 1e-5;
-T = 200;
-T2 =1000;
+TOL = 1e-7;
+T = 1000;
+T2 = 100;
 %T_A = 100;
-SDP_iter = 1000;
-SDP_rank = 10;
-Top = 100;
+SDP_iter = 500;
+SDP_rank = 5;
+Top = 10;
 
 [K0,D] = size(W0);
 [N,K0] = size(Z0);
 [N,D] = size(X);
 %neg_I = spdiags(-Gamma*ones(N,1),0,N,N);
 
-Z = [];
-c = [];
+[N,k] = size(Z_init);
+Z = Z_init;
+%Z = [];
+c = rand(k,1);
 
 %match_tol = 1e-0;
 %f = @(W,w1) sqrt( min(sum( (W - ones(size(W,1),1)*w1).^2, 2 ))/D ) <= match_tol;
-tol_rate = 0.01;
+tol_rate = 0.02;
 f = @(Z1,z1,thd) sum( Z1~=(z1*ones(1,size(Z1,2))) ) <= thd;
 
-last_Z = -1;
-last_c = -1;
-last_obj = 1e300;
-eta_rate = 1e-4/N;
 
+last_obj = 1e300;
+eta_rate = 1e-6;
+last_c = -1;
 for t = 1:T
 	
 	K = length(c);
@@ -53,20 +54,17 @@ for t = 1:T
 	%%
 	dobj = MixDualLoss( y, X, Zc, a, Tau ) + Lambda*sum(c);
 	pobj = MixPrimalLoss( y, E, w, Tau ) + Lambda*sum(c);
-	if mod(t,10) == 0
-	['t=' num2str(t) ', d-obj=' num2str(dobj) ', p-obj=' num2str(pobj) ', nnz(c)=' num2str(nnz(c)) ', round_loss=' num2str(Refine_EM(c,Z,y,X,K0)) ', eta=' num2str(eta_rate)]
+	['t=' num2str(t) ', d-obj=' num2str(dobj) ', p-obj=' num2str(pobj) ', nnz(c)=' num2str(nnz(c)) ', round_loss=' num2str(roundErr(y,X,Z,c,10)) ', eta=' num2str(eta_rate)]
 	%['t=' num2str(t) ', d-obj=' num2str(dobj) ', p-obj=' num2str(pobj) ', nnz(c)=' num2str(nnz(c))]
-	end
+	
 	if pobj > last_obj + 1e-3
 					'obj increased'
-					eta_rate = eta_rate /2;
+					eta_rate = eta_rate / 2;
 					c = last_c;
-					Z = last_Z;
-	else
+					%return;
+	else 
 					last_obj = pobj;
 	end
-	last_c = c;
-	last_Z = Z;
 	
 	%match = zeros(1,length(c));
 	%for k = 1:size(W0,1)
@@ -81,15 +79,15 @@ for t = 1:T
 		break;
 	end
 	%compute gradient and find greedy direction
-	A = spdiags(a,0,N,N)*X;
+	%A = spdiags(a,0,N,N)*X;
 	%z = MixMaxCutComposite( neg_I, 1.0, A, SDP_rank, SDP_iter);
-	z = MixMaxCut( A, SDP_rank, SDP_iter);
-	%'maxcut done'
+	%z = MixMaxCut( A, SDP_rank, SDP_iter);
+	'maxcut done'
 	
-	if ~inside( Z, z ) %&& t<=2
-		Z = [Z z];
-		c = [c;0];
-	end
+	%if ~inside( Z, z ) %&& t<=2
+	%	Z = [Z z];
+	%	c = [c;0];
+	%end
 	
 	%fully corrective by prox-GD
 	k = length(c);
@@ -97,6 +95,7 @@ for t = 1:T
 	eta = eta_rate;
 	[ETE,ETy,E] = LS_Prep(y,X,Z);
 	
+	last_c = c;
 	for t2 = 1:T2
 			[w,a] = LS_FastSolve(c, ETE, ETy, y,E, Tau);
 			%Zc = Z*diag(sqrt(c));
@@ -111,23 +110,23 @@ for t = 1:T
 			k2 = min(k,Top);
 			c(ind(1:k2)) = c2(ind(1:k2));
 	end
-	%delta_c
+	delta_c
 	
 	%shrink c and Z for j:cj=0
 	Z = Z(:,c'>TOL);
 	c = c(c>TOL);
 	
-	%'prox-GD done'
-	%match = zeros(1,length(c));
-	%match2 = zeros(1,length(c));
-	%for k = 1:size(Z0,2)
-	%		match_k = f(Z,Z0(:,k),N*tol_rate);
-	%		match(match_k>0)=k;
-	%		match_k = f(1-Z,Z0(:,k),N*tol_rate);
-	%		match2(match_k>0)=k;
-	%end
-  %P	= [match;match2;c'];
-	%P
+	'prox-GD done'
+	match = zeros(1,length(c));
+	match2 = zeros(1,length(c));
+	for k = 1:size(Z0,2)
+			match_k = f(Z,Z0(:,k),N*tol_rate);
+			match(match_k>0)=k;
+			match_k = f(1-Z,Z0(:,k),N*tol_rate);
+			match2(match_k>0)=k;
+	end
+  P	= [match;match2;c'];
+	P
 	
 end
 

@@ -1,4 +1,4 @@
-function [ETE, ETy, E] = LS_Prep(y,X,Z)
+function [Q, S_diag, QTETy, E] = LS_Prep(y,X,Z)
 
 [N,D] = size(X);
 [N,K] = size(Z);
@@ -11,4 +11,7 @@ for i = 1:N
 end
 
 ETE = E'*E;
-ETy = E'*y;
+[Q,S] = eig(ETE);
+
+S_diag = diag(S);
+QTETy = Q'*E'*y;
