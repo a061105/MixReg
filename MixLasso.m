@@ -11,7 +11,7 @@
 function [Z,W,c,best_round_err] = MixLasso( y, X, Lambda, Tau, Z0, W0, is_generalized )
 
 TOL = 1e-4;
-T = 6;
+T = 200;
 T2 =1000;
 %T_A = 100;
 SDP_iter = 1000;
@@ -63,6 +63,7 @@ for t = 1:T
 				best_round_err = round_err;
 				%parameter error (W:K*D, w:[W_{:,1};W_{:,2};...;W_{:,D}])
 				%Early Stop coulud be of help
+				%write to file here for the best value
 		end
 		['t=' num2str(t) ', d-obj=' num2str(dobj) ', p-obj=' num2str(pobj) ', nnz(c)=' num2str(nnz(c)) ', round_loss=' num2str(round_err) ', best_err=' num2str(best_round_err) ', eta=' num2str(eta_rate)]
 	end
