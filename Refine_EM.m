@@ -2,7 +2,7 @@ function [best_err, W_out, Z_out, best_m] = Refine_EM(c,Z, y,X,  K) %round to K
 
 [N,D] = size(X);
 
-[c2, ind] = sort(c);
+[c2, ind] = sort(c,'descend');
 
 best_err = 1e300;
 T=100;

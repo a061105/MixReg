@@ -8,8 +8,8 @@ if length(c) == 0
 end
 
 [c2,ind] = sort(c,'descend');
-Z2 = Z(:,ind(1:min(end,K0)));
-%Z2 = Z;
+%Z2 = Z(:,ind(1:min(end,K0)));
+Z2 = Z;
 [N,K] = size(Z2);
 DK = D*K;
 
@@ -19,6 +19,6 @@ for i = 1:N
 		E(i,:) = rank_one_mat(:)';
 end
 
-w = inv(E'*E)*E'*y;
+w = inv(E'*E+1e-5*eye(DK))*E'*y;
 
 err = norm(y-E*w)/sqrt(N);
