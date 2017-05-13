@@ -1,14 +1,17 @@
 
-%[X,y,Z0,W0] = genData2();
-[X,y,Z0,W0] = genData();
-is_generalized = 0;
+is_generalized = 1;
+if is_generalized 
+	[X,y,Z0,W0] = genData2();
+else
+	[X,y,Z0,W0] = genData();
+end
 
 [N,D] = size(X);
 [N,K] = size(Z0);
 %['true obj=' num2str( norm(y-sum(Z0.*(X*W0'),2)).^2 + Tau*norm(W0(:))^2/2 + Lambda*K ) ]
 
 if is_generalized
-		Lambda = 10*N; %Suggested Value = N
+		Lambda = 100*N; %Suggested Value = N
 else
 		Lambda = N;
 end

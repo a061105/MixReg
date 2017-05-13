@@ -10,12 +10,12 @@
 
 function [Z,W,c,best_round_err] = MixLasso( y, X, Lambda, Tau, Z0, W0, is_generalized )
 
-TOL = 1e-4;
+TOL = 1e-5;
 T = 200;
 T2 =1000;
 %T_A = 100;
-SDP_iter = 1000;
-SDP_rank = 10;
+SDP_iter = 400;
+SDP_rank = 5;
 Top = 100;
 
 [K0,D] = size(W0);
@@ -27,14 +27,14 @@ c = [];
 
 %match_tol = 1e-0;
 %f = @(W,w1) sqrt( min(sum( (W - ones(size(W,1),1)*w1).^2, 2 ))/D ) <= match_tol;
-tol_rate = 0.01;
+tol_rate = 0.1;
 f = @(Z1,z1,thd) sum( Z1~=(z1*ones(1,size(Z1,2))) ) <= thd;
 
 best_round_err = 1e300;
 last_Z = -1;
 last_c = -1;
 last_obj = 1e300;
-eta_rate = 1e-2/N;
+eta_rate = 1e-4/N;
 
 for t = 1:T
 	
