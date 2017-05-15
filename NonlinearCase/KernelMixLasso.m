@@ -34,7 +34,7 @@ best_round_err = 1e300;
 last_Z = -1;
 last_c = -1;
 last_obj = 1e300;
-eta_rate = 1e-6/N;
+eta_rate = 1e-5/N;
 
 for t = 1:T
 	
@@ -49,7 +49,7 @@ for t = 1:T
 	
 	%dump info
 	dobj = MixDualLoss( y, Q, alpha, Z, c ) + Lambda*sum(c);
-	if mod(t,5) == 0
+	if mod(t,10) == 0
 		
 		[round_err,Aout,Zout,~] = Refine_EM(c,Z,y,Q,K0);
 		if round_err < best_round_err

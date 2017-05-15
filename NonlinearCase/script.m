@@ -20,7 +20,7 @@ T_EM = 100;
 %rmse
 
 Lambda = N*5;
-KernelMixLasso(y, X, Lambda, ker_func, Z0, 'bash3');
+KernelMixLasso(y, X, Lambda, ker_func, Z0, 'Weichen');
 
 plot(X,y,'o','color',[0.3,0.3,0.3]);
 hold on;

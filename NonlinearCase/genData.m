@@ -1,6 +1,6 @@
 function [X,Phi,y,Z0,W0] = genData()
 
-seed = 2;
+seed = 11;
 rand('seed',seed);
 randn('seed',seed);
 N = 600;

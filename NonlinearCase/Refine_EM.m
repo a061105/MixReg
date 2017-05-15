@@ -7,7 +7,7 @@ N = length(y);
 best_err = 1e300;
 T=100;
 
-m_upper = 9;
+m_upper = 8;
 for m = 1:min(m_upper,length(c))
 		%count frequency of distinct patterns of length k
 		[Zuni,ia,ic] = unique(Z(:,ind(1:m)),'rows');

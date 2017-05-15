@@ -1,10 +1,10 @@
 %[X,Phi,y,Z0,W0] = genData();
-[y,data] = libsvmread('../../../data/triazines_scale');
+[z,data] = libsvmread('../../../data/vowel.scale');
 
 %Construct Label
-J = 3;
+%J = 3;
 %Z0 =  full(data(:,J));
-z = data(:,J);
+%z = data(:,J);
 N = length(z);
 labels = unique(z);
 K0 = length(labels);
@@ -17,11 +17,11 @@ end
 gamma = 0.001;
 ker_func = @(x1,x2)rbf_kernel(x1,x2,gamma);
 %Choose Response
-%best_ratio = -1e300;
-%best_J = -1;
-%for J = 1:size(data,2)
+best_ratio = -1e300;
+best_J = -1;
+for J = 1:size(data,2)
 		X = data(:,setdiff(1:size(data,2),J));
-		%y = data(:,J);
+		y = data(:,J);
 		
 		[N,D] = size(X);
 		
@@ -34,14 +34,14 @@ ker_func = @(x1,x2)rbf_kernel(x1,x2,gamma);
 		rmse2 = norm(y-y2)/sqrt(N);
 		rmse2
 
-%		ratio = rmse2 / rmse;
-%		if ratio > best_ratio
-%				best_ratio = ratio;
-%				best_J = J;
-%
-%				best_ratio
-%		end
-%end
+		ratio = rmse2 / rmse;
+		if ratio > best_ratio
+				best_ratio = ratio;
+				best_J = J;
 
-%best_ratio
-%best_J
+				best_ratio
+		end
+end
+
+best_ratio
+best_J
