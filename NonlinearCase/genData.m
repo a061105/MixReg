@@ -1,26 +1,19 @@
-function [X,y,Z0,W0] = genData()
+function [X,Phi,y,Z0,W0] = genData()
 
-%load('../Sampledata/data1_k=3/data.mat');
-%Z0 = Z;
-%W0 = W;
-%y = Y;
-%X = X;
-seed = 4;
+seed = 2;
 rand('seed',seed);
 randn('seed',seed);
-N = 250;
-D = 20;
+N = 600;
+P = 10;
 K = 3;
+
+W0 = rand(K,1+P)*2-1; %with bias
 %X = rand(N,D)*2-1;
-X = randn(N,D);
-%V0 = randn(K,D);
-W0 = randn(K,D);
-%Z0 = binornd(1,0.5,[N,K]);
-Z0 = zeros(N,K);
-%X = zeros(N,D);
-for i = 1:N
-		k = ceil(rand*K);
-		Z0(i,k) = 1;
-		%X(i,:) = V0(k,:)+randn(1,D)*0.1;
-end
-y = sum(Z0 .* (X*W0'), 2);
+X = rand(N,1)*2-1;
+Phi = polyExp(X,P);
+
+Z0 = randMul(N,K);
+y = sum(Z0 .* (Phi*W0'), 2);
+
+%plot(X,y,'x');
+%saveas(gcf, '~/public_html/figures/tmp.pdf', 'pdf');

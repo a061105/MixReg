@@ -8,20 +8,20 @@
 %%      \frac{-1}{2*tau} tr( diag(a)XX'diag(a) M ) + <y,a> - \frac{1}{2}\|a\|^2 + Lambda*\|M\|_S
 %%
 
-function [Z,W,c,best_round_err] = MixLasso( y, X, Lambda, Tau, Z0, W0, is_generalized )
+function [best_round_err] = KernelMixLasso( y, X, Lambda, ker_func, Z0, bash_name )
 
 TOL = 1e-5;
-T = 200;
+T = 1000;
 T2 =1000;
 %T_A = 100;
-SDP_iter = 400;
-SDP_rank = 5;
-Top = 100;
+SDP_iter = 200;
+SDP_rank = 1;
 
-[K0,D] = size(W0);
 [N,K0] = size(Z0);
 [N,D] = size(X);
 
+'compute kernel matrix'
+Q = kernelMat( ker_func, X );
 Z = [];
 c = [];
 
@@ -34,87 +34,89 @@ best_round_err = 1e300;
 last_Z = -1;
 last_c = -1;
 last_obj = 1e300;
-eta_rate = 1e-4/N;
+eta_rate = 1e-6/N;
 
 for t = 1:T
 	
+	%find alpha(c)
 	K = length(c);
 	if K~=0
-		Zc = Z*diag(sqrt(c));
+			M = Z*diag(c)*Z';
 	else
-		Zc = zeros(N,1);
-		K=1;
+			M = zeros(N,N);
 	end
-	%find a
-	[w,a,E] = LS_Solve( y, X, Zc, Tau );
-	tmp = reshape(w,[D,K]);
-	W = tmp';
+	alpha = ( M .* Q + eye(N)) \ y;
+	
 	%dump info
-	%%
-	dobj = MixDualLoss( y, X, Zc, a, Tau ) + Lambda*sum(c);
-	pobj = MixPrimalLoss( y, E, w, Tau ) + Lambda*sum(c);
-	if mod(t,3) == 0
-		if is_generalized
-				round_err = Refine_EM_gen(c,Z,y,X,K0);
-		else
-				round_err = Refine_EM(c,Z,y,X,K0);
-		end
+	dobj = MixDualLoss( y, Q, alpha, Z, c ) + Lambda*sum(c);
+	if mod(t,5) == 0
+		
+		[round_err,Aout,Zout,~] = Refine_EM(c,Z,y,Q,K0);
 		if round_err < best_round_err
 				best_round_err = round_err;
-				%parameter error (W:K*D, w:[W_{:,1};W_{:,2};...;W_{:,D}])
-				%Early Stop coulud be of help
-				%write to file here for the best value
+
+				%construct predictor
+				Xcell = num2cell(X,2);
+				pred_funcs = cell(K0,1);
+				for k = 1:K0
+						pred_funcs{k} = @(x) Aout(:,k)' * cellfun(@(xi) ker_func(xi,x), Xcell);
+				end
+				%plot
+				plot(X,y,'o','color',[0.3,0.3,0.3]);
+				hold on;
+				x=-1:0.01:1;
+				for k = 1:K0
+						plot(x, arrayfun(pred_funcs{k},x),'LineWidth',2);
+						hold on;
+				end
+				hold off;
+				saveas(gcf,['~/public_html/figures/' bash_name '.pdf'],'pdf');
 		end
-		['t=' num2str(t) ', d-obj=' num2str(dobj) ', p-obj=' num2str(pobj) ', nnz(c)=' num2str(nnz(c)) ', round_loss=' num2str(round_err) ', best_err=' num2str(best_round_err) ', eta=' num2str(eta_rate)]
+		['t=' num2str(t) ', d-obj=' num2str(dobj) ', nnz(c)=' num2str(nnz(c)) ', round_loss=' num2str(round_err) ', best_err=' num2str(best_round_err) ', eta=' num2str(eta_rate)]
+		%['t=' num2str(t) ', d-obj=' num2str(dobj) ', nnz(c)=' num2str(nnz(c)) ', eta=' num2str(eta_rate)]
 	end
-	if pobj > last_obj + 1e-3
+	
+	if dobj > last_obj + TOL
 					'obj increased'
 					eta_rate = eta_rate /2;
 					c = last_c;
 					Z = last_Z;
 	else
-					last_obj = pobj;
+					last_obj = dobj;
+					last_c = c;
+					last_Z = Z;
 	end
-	last_c = c;
-	last_Z = Z;
 	
 	if( t==T )
 		break;
 	end
 	%compute gradient and find greedy direction
-	A = spdiags(a,0,N,N)*X;
-	z = MixMaxCut( A, SDP_rank, SDP_iter);
-	'maxcut done'
+	C = diag(alpha)*Q*diag(alpha);
+	z = MixMaxCutDense( C, SDP_rank, SDP_iter );
 	
-	if ~inside( Z, z ) %&& t<=2
+	'maxcut done'
+	if ~inside( Z, z ) 
 		Z = [Z z];
 		c = [c;0];
 	end
 	
 	%fully corrective by prox-GD
 	k = length(c);
-	
 	eta = eta_rate;
-	[ETE,ETy,E] = LS_Prep(y,X,Z);
 	for t2 = 1:T2
-			%Zc = Z*diag(sqrt(c));
-			%[w,a,E] = LS_Solve( y, X, Zc, Tau );
-			[w,a] = LS_FastSolve(c, ETE, ETy, y,E, Tau);
-			grad_c = gradient_c(Z,a,X,Tau);
-			c2 = prox( c - eta*grad_c, eta*Lambda );
-			delta_c = c2-c;
-			%c = c2;
-			[tmp,ind] = sort(abs(delta_c),'descend');
-			k2 = min(k,Top);
-			c(ind(1:k2)) = c2(ind(1:k2));
+			%find alpha(c)
+			M = Z*diag(c)*Z';
+			alpha = ( M .* Q + eye(N)) \ y;
+			%gradient
+			grad_c = gradient_c(Z,alpha,Q);
+			c = prox( c - eta*grad_c, eta*Lambda );
 	end
-	%delta_c
 	
 	%shrink c and Z for j:cj=0
 	Z = Z(:,c'>TOL);
 	c = c(c>TOL);
 	
-	'prox-GD done'
+	%'prox-GD done'
 	match = zeros(1,length(c));
 	match2 = zeros(1,length(c));
 	for k = 1:size(Z0,2)
@@ -127,18 +129,17 @@ for t = 1:T
 	P
 end
 
-
 end
 
-function grad_c = gradient_c(Z,a,X,Tau)
+function grad_c = gradient_c(Z,a,Q)
 			
 			[N,K] = size(Z);
-			Da = spdiags(a,0,N,N);
-			tmp = Da*X;
+			Da = diag(a);
+			tmp = Da*Q*Da;
 			
 			grad_c = zeros(K,1);
 			for k =1:K
-					grad_c(k) = -Z(:,k)'*tmp*tmp'*Z(:,k)/2/Tau;
+					grad_c(k) = -Z(:,k)'*tmp*Z(:,k)/2;
 			end
 end
 	
